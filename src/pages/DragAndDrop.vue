@@ -2,11 +2,13 @@
   <div class="container">
     <!-- Блоки -->
     <div v-for="(block, index) in blocks" :key="index" class="block" :data-id="block.id"
-     :class="{ [block.id]: true, selected: index === selectedBlockIndex }"
+     :class="{ [block.id]: true, selected: index === selectedBlockIndex } "
       draggable="true" 
       @dragstart="startDrag(index, $event)" 
       @dragover="handleDragOver($event)" 
-      @drop="handleDrop(index)" >
+      @drop="handleDrop(index)"
+      contenteditable="true"
+      @input="rrr" >
         {{ block.name }}
     </div>
   </div>
@@ -32,6 +34,12 @@ export default {
     },
   },
   methods: {
+
+
+    rrr(element) {
+            const inputValue = this.innerText;
+            console.log('Введенное значение:', inputValue);
+        },
 
     startDrag(index, event) {
       event.dataTransfer.setData('text/plain', index);

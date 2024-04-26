@@ -1,25 +1,32 @@
 <template>
     <div class="table-container">
-        <table class="full-width-table" ref="table">
+        <div class="btn-group">
+            <button ref="centerHeightBtn" class="btn" @click="centerHeight">Центровать по вертикали</button>
+            <button ref="centerWidthBtn" class="btn" @click="centerWidth">Центровать по горизонтали</button>
+        </div>
+
+        <table class="full-width-table">
             <colgroup>
-                <col v-for="(columnWidth, index) in columnWidths" :key="index" :style="{ width: columnWidth + 'px' }">
+                <col v-for="(index) in listCountries[0]" :key="index">
             </colgroup>
             <thead>
                 <tr>
                     <th v-for="(column, index) in getNameColumn" :key="index">
-                        <div class="header-cell">
+                        <div class=" cell header-cell">
                             {{ column }}
                             <div class="resize-handle" @mousedown="startColumnResize($event, index)"></div>
+                            <div class="resize-row" @mousedown="startCellResize($event, index)"></div>
                         </div>
                     </th>
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="(row, rowIndex) in rows" :key="rowIndex">
+                <tr v-for="(row, rowIndex) in listCountries" :key="rowIndex">
                     <td v-for="(cell, cellIndex) in row" :key="cellIndex">
-                        <div :style="{ height: rowHeights[rowIndex] + 'px' }">
+                        <div class="cell" :class="cellIndex">
                             {{ cell }}
-                            <div class="resize-row" @mousedown="startCellResize($event, rowIndex, cellIndex)"></div>
+                            <div class="resize-row" @mousedown="startCellResize($event, rowIndex)"></div>
+                            <div class="resize-column-cell" @mousedown="startColumnResize($event, cellIndex)"></div>
                         </div>
                     </td>
                 </tr>
@@ -28,23 +35,30 @@
     </div>
 </template>
 
+<!-- <div class="table-container">
+        <div class="table-container__btn-group">
+            <button ref="centerHeightBtn" class="table-container__btn" @click="centerHeight">Центровать по вертикали</button>
+            <button ref="centerWidthBtn" class="table-container__btn" @click="centerWidth">Центровать по горизонтали</button>
+        </div>
+</div>
+<table class="table-container__table table">
+ <colgroup class="table__column-group"></colgroup>
+</template> -->
+
 <script>
 import { mapGetters } from 'vuex';
-import { ref } from 'vue'; // Импортируем ref из Vue 3
 
 export default {
     data() {
         return {
-            // columns: ['Название страны', 'Количество жителей', 'Столица', 'Месторасположение', 'Краткое описание'],
-            rows: [], // Заполните данными из хранилища Vuex
-            columnWidths: [], // Изначальные ширины столбцов
-            rowHeights: [], // Изначальные высоты строк
-            resizingColumnIndex: null, // Индекс столбца, который в данный момент изменяется
-            resizingRowIndex: null, // Индекс строки, которая в данный момент изменяется
-            startOffsetX: null, // Начальное смещение X при изменении размера столбца
-            startOffsetY: null, // Начальное смещение Y при изменении размера строки
+            listCountries: [],
+            columnWidth: null,
+            resizingColumnIndex: null,
+            resizingRowIndex: null,
+            startOffsetX: null,
+            startOffsetY: null,
             minHeightRow: 18,
-            minWidthRow: 30,
+            minWidthColumn: 10,
         };
     },
     computed: {
@@ -54,32 +68,31 @@ export default {
         }),
     },
     methods: {
+        //width
         startColumnResize(event, index) {
             this.resizingColumnIndex = index;
             this.startOffsetX = event.clientX;
-            this.initialColumnWidth = this.columnWidths[index];
+            this.initialColumn = event.target.closest('.cell')
+            this.initialColumnWidth = event.target.closest('.cell').offsetWidth;
             document.addEventListener('mousemove', this.resizeColumn);
             document.addEventListener('mouseup', this.stopColumnResize);
-
             document.querySelectorAll('*').forEach(element => {
                 element.style.userSelect = 'none';
             });
         },
         resizeColumn(event) {
+            document.body.style.cursor = 'col-resize';
             if (this.resizingColumnIndex !== null) {
                 const deltaX = event.clientX - this.startOffsetX;
                 const newWidth = this.initialColumnWidth + deltaX;
-                if (newWidth > this.minWidthRow) {
-                    this.columnWidths[this.resizingColumnIndex] = newWidth;
-                    console.log(this.columnWidths);
-                    return// Изменяем значение напрямую
+                if (newWidth > this.minWidthColumn) {
+                    this.initialColumn.parentNode.style.width = newWidth + 'px';
+                    return
                 }
             }
         },
         stopColumnResize() {
-            this.resizingColumnIndex = null;
-            this.startOffsetX = null;
-            this.initialColumnWidth = null;
+            this.clearData()
             document.removeEventListener('mousemove', this.resizeColumn);
             document.removeEventListener('mouseup', this.stopColumnResize);
 
@@ -88,15 +101,14 @@ export default {
             });
         },
 
-        //
-        //
-        //   
-        // 
-
+        //height
         startCellResize(event, rowIndex, cellIndex) {
             this.resizingRowIndex = rowIndex;
             this.startOffsetY = event.clientY;
-            this.initialRowHeight = this.rowHeights[rowIndex];
+
+            this.initialRow = event.target.closest('.cell')
+            this.initialRowHeight = event.target.closest('.cell').offsetHeight;
+
             document.addEventListener('mousemove', this.resizeCell);
             document.addEventListener('mouseup', this.stopCellResize);
 
@@ -105,18 +117,20 @@ export default {
             });
         },
         resizeCell(event) {
+            document.body.style.cursor = 'row-resize';
             if (this.resizingRowIndex !== null) {
                 const deltaY = event.clientY - this.startOffsetY;
                 const newRowHeight = this.initialRowHeight + deltaY;
                 if (newRowHeight > this.minHeightRow) {
-                    this.rowHeights[this.resizingRowIndex] = newRowHeight; // Изменяем значение напрямую
+                    const cellRow = this.initialRow.parentNode.parentNode
+                    cellRow.querySelectorAll('.cell').forEach(cell => {
+                        cell.style.height = newRowHeight + 'px';
+                    })
                 }
             }
         },
         stopCellResize() {
-            this.resizingRowIndex = null;
-            this.startOffsetY = null;
-            this.initialRowHeight = null;
+            this.clearData()
             document.removeEventListener('mousemove', this.resizeCell);
             document.removeEventListener('mouseup', this.stopRowResize);
 
@@ -124,22 +138,128 @@ export default {
                 element.style.userSelect = 'auto';
             });
         },
+        centerHeight() {
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.classList.toggle('center-height')
+            })
+            this.$refs.centerHeightBtn.classList.toggle('active')
+        },
+        centerWidth() {
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.classList.toggle('center-width')
+            })
+            this.$refs.centerWidthBtn.classList.toggle('active')
+        },
+        clearData() {
+            document.body.style.cursor = 'auto';
+            this.resizingRowIndex = null;
+            this.startOffsetY = null;
+            this.initialRowHeight = null;
+            this.resizingColumnIndex = null;
+            this.startOffsetX = null;
+            this.initialColumnWidth = null;
+            this.columnWidth = null;
+        }
     },
     created() {
-        this.rows = this.getCountries;
-        this.columnWidths = Array(this.getNameColumn.length).fill(20)
-        this.rowHeights = Array(this.getCountries.length).fill(60)
+        this.listCountries = this.getCountries;
     },
 };
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+* {
+    transform-origin: top left;
+    transform: all 0.2s linear;
+}
+
+.btn-group {
+    width: 90%;
+    display: flex;
+    justify-content: flex-start;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.btn {
+    width: max-content;
+    height: max-content;
+    padding: 5px 10px;
+
+    &.active {
+        background-color: green;
+        color: white;
+    }
+}
+
+.cell {
+    width: 100%;
+    min-height: 100%;
+    height: max-content;
+    display: flex;
+    align-items: flex-start;
+    justify-content: start;
+
+
+    text-align: start;
+    overflow: auto;
+    padding: 8px;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+
+    &.center-height {
+        align-items: center;
+    }
+
+    &.center-width {
+        justify-content: center;
+        text-align: center;
+    }
+
+    & .resize-row {
+        position: absolute;
+        padding: 0;
+        right: 0px;
+        bottom: -7px;
+        width: 100%;
+        height: 14px;
+        cursor: row-resize;
+    }
+}
+
+.header-cell {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: unset;
+    overflow: unset;
+
+    & .resize-row {
+        position: absolute;
+        padding: 0;
+        right: -2.5%;
+        bottom: -15px;
+        width: 105%;
+        height: 14px;
+        cursor: row-resize;
+    }
+}
+
+
 .table-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     overflow-x: auto;
 }
 
 .full-width-table {
-    width: 100%;
+    width: 90%;
+    height: max-content;
     border-collapse: collapse;
     overflow: hidden;
 }
@@ -156,15 +276,6 @@ td {
     position: relative;
 }
 
-td div {
-    position: relative;
-    overflow: scroll;
-    padding: 8px;
-
-    &::-webkit-scrollbar {
-        display: none;
-    }
-}
 
 .header-cell {
     position: relative;
@@ -179,13 +290,12 @@ td div {
     cursor: col-resize;
 }
 
-.resize-row {
+.resize-column-cell {
     position: absolute;
-    padding: 0;
-    right: 0px;
-    bottom: -7px;
-    width: 100%;
-    height: 14px;
-    cursor: row-resize;
+    right: -4px;
+    bottom: 0px;
+    width: 7px;
+    height: 100%;
+    cursor: col-resize;
 }
 </style>
